@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-INDEX_DIR = "IndexFiles.index"
+INDEX_DIR = "index/IndexFiles.index"
 
 import sys, os, lucene
 
@@ -22,6 +22,22 @@ some cases.
 """
 
 
+def documentToJSON(doc):
+    return {
+        "title": doc.get("title"),
+        "text": doc.get("text"),
+        "author": doc.get("author"),
+        "subreddit": doc.get("subreddit"),
+        "linked_page_title": doc.get("linked_page_title"),
+        "post_id": doc.get("post_id"),
+        "type": doc.get("type"),
+        "post_url": doc.get("post_url"),
+        "timestamp": doc.get("timestamp"),
+        "score": doc.get("score"),
+        "num_comments": doc.get("comments"),
+    }
+
+
 def run(searcher, analyzer):
     while True:
         print()
@@ -38,18 +54,8 @@ def run(searcher, analyzer):
 
         for scoreDoc in scoreDocs:
             doc = searcher.storedFields().document(scoreDoc.doc)
-            print(
-                "post_id: ",
-                doc.get("post_id"),
-                "title: ",
-                doc.get("title"),
-                "body: ",
-                doc.get("text"),
-                "path:",
-                doc.get("filepath"),
-                "name:",
-                doc.get("filename"),
-            )
+
+            print(documentToJSON(doc))
 
 
 if __name__ == "__main__":
