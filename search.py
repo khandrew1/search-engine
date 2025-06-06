@@ -34,7 +34,7 @@ def documentToJSON(doc):
         "post_url": doc.get("post_url"),
         "timestamp": doc.get("timestamp"),
         "score": doc.get("score"),
-        "num_comments": doc.get("comments"),
+        "num_comments": doc.get("num_comments"),
     }
 
 

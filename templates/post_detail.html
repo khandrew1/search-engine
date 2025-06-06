@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Details</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2, h3 { color: #333; }
+        .post-section { border-bottom: 2px solid #ccc; padding-bottom: 20px; margin-bottom: 20px; }
+        .post-section h1 { margin-top: 0; color: #0056b3; }
+        .post-meta p, .comment-meta p { margin: 2px 0; font-size: 0.9em; color: #555; }
+        .post-text, .comment-text { margin-top: 10px; white-space: pre-wrap; /* Preserve formatting */ }
+        .comments-section h2 { margin-top: 0; }
+        .comment-item { border: 1px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 4px; background-color: #f9f9f9; }
+        .comment-item:last-child { margin-bottom: 0; }
+        .error { color: red; font-weight: bold; }
+        a.nav-link { color: #007bff; text-decoration: none; }
+        a.nav-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p><a class="nav-link" href="{{ url_for('home') }}">Home Search</a> | 
+           <a class="nav-link" href="javascript:history.back()">Back to Results</a></p>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% elif post %}
+            <div class="post-section">
+                <h1>{{ post.title | default('No Title') }}</h1>
+                <div class="post-meta">
+                    <p><strong>Post ID:</strong> {{ post.post_id }}</p>
+                    <p><strong>Author:</strong> {{ post.author | default('N/A') }}</p>
+                    <p><strong>Subreddit:</strong> {{ post.subreddit | default('N/A') }}</p>
+                    <p><strong>Score:</strong> {{ post.score if post.score is not none else 'N/A' }}</p>
+                    <p><strong>Timestamp:</strong> {{ post.timestamp | default('N/A') }}</p>
+                    {% if post.post_url %}
+                        <p><strong>Origin URL:</strong> <a href="{{ post.post_url }}" target="_blank" rel="noopener noreferrer">{{ post.post_url }}</a></p>
+                    {% endif %}
+                </div>
+                {% if post.text %}
+                    <div class="post-text">
+                        <p>{{ post.text | e }}</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="comments-section">
+                <h2>Comments ({{ comments | length }})</h2>
+                {% if comments %}
+                    {% for comment in comments %}
+                        <div class="comment-item">
+                            <div class="comment-meta">
+                                <p><strong>Author:</strong> {{ comment.author | default('N/A') }}</p>
+                                <p><strong>Score:</strong> {{ comment.score if comment.score is not none else 'N/A' }}</p>
+                                <p><strong>Timestamp:</strong> {{ comment.timestamp | default('N/A') }}</p>
+                            </div>
+                            {% if comment.text %}
+                                <div class="comment-text">
+                                    <p>{{ comment.text | e }}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No comments for this post.</p>
+                {% endif %}
+            </div>
+        {% else %}
+            <p>Post not found.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

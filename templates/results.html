@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results - Posts</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; }
+        .result-item { border: 1px solid #eee; padding: 15px; margin-bottom: 15px; border-radius: 4px; background-color: #f9f9f9; }
+        .result-item h3 { margin-top: 0; }
+        .result-item h3 a { color: #0056b3; text-decoration: none; }
+        .result-item h3 a:hover { text-decoration: underline; }
+        .result-item p { margin-bottom: 5px; }
+        .result-item strong { color: #555; }
+        .error { color: red; font-weight: bold; }
+        a.nav-link { color: #007bff; text-decoration: none; }
+        a.nav-link:hover { text-decoration: underline; }
+        .search-summary { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Search Results for Posts</h1>
+        <p><a class="nav-link" href="{{ url_for('home', sort_field=sort_field, sort_order=sort_order) }}">New Search</a></p>
+
+        <div class="search-summary">
+            <p><strong>Query:</strong> "{{ query }}"</p>
+            <p><strong>Sorted by:</strong> 
+                {{ 'Post Score' if sort_field == 'score' else 
+                   'Number of Comments' if sort_field == 'num_comments' else
+                   sort_field.replace('_', ' ')|capitalize }} 
+                ({{ 'Descending' if sort_order == 'desc' else 'Ascending' }})
+            </p>
+        </div>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% elif results %}
+            <p>{{ count }} post(s) found.</p>
+            {% for doc in results %}
+                {% if doc.type == 'post' and doc.post_id %}
+                <div class="result-item">
+                    <h3>
+                        <a href="{{ url_for('post_detail_view', post_id=doc.post_id) }}">
+                            {{ doc.title | default('No Title') }}
+                        </a>
+                    </h3>
+                    <p><strong>Post ID:</strong> {{ doc.post_id }}</p>
+                    <p><strong>Author:</strong> {{ doc.author | default('N/A') }}</p>
+                    <p><strong>Subreddit:</strong> {{ doc.subreddit | default('N/A') }}</p>
+                    <p><strong>Score:</strong> {{ doc.score if doc.score is not none else 'N/A' }}</p>
+                    <p><strong>Comments Count (on post):</strong> {{ doc.num_comments if doc.num_comments is not none else 'N/A' }}</p>
+                    <p><strong>Timestamp:</strong> {{ doc.timestamp | default('N/A') }}</p>
+                    {% if doc.text %}
+                        <p><strong>Text Preview:</strong> {{ doc.text[:200] | e }}... </p>
+                    {% endif %}
+                     {% if doc.post_url %}
+                        <p><strong>Origin URL:</strong> <a href="{{ doc.post_url }}" target="_blank" rel="noopener noreferrer">{{ doc.post_url }}</a></p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            {% endfor %}
+        {% else %}
+            <p>No posts found for your query.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
