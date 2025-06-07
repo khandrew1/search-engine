@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search Results - Posts</title>
+    <title>Search Results - {{ type_field.capitalize() }}</title>
     <style>
         body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
         .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -18,19 +18,29 @@
         a.nav-link { color: #007bff; text-decoration: none; }
         a.nav-link:hover { text-decoration: underline; }
         .search-summary { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #ddd; }
+        .comment-meta { font-size: 0.9em; color: #666; margin-bottom: 8px; }
+        .comment-text-preview { margin-left: 10px; padding-left:10px; border-left: 2px solid #ddd; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Search Results for Posts</h1>
-        <p><a class="nav-link" href="{{ url_for('home', sort_field=sort_field, sort_order=sort_order) }}">New Search</a></p>
+        <h1>Search Results for {{ type_field.capitalize() }}</h1>
+        <p><a class="nav-link" href="{{ url_for('home', sort_field=sort_field, sort_order=sort_order, type_field=type_field) }}">New Search</a></p>
 
         <div class="search-summary">
             <p><strong>Query:</strong> "{{ query }}"</p>
             <p><strong>Sorted by:</strong> 
-                {{ 'Post Score' if sort_field == 'score' else 
-                   'Number of Comments' if sort_field == 'num_comments' else
-                   sort_field.replace('_', ' ')|capitalize }} 
+                {% if sort_field == 'num_comments' and type_field == 'comments' %}
+                    Relevance 
+                {% elif sort_field == 'score' and type_field == 'comments' %}
+                    Comment Score 
+                {% elif sort_field == 'score' %}
+                    Post Score
+                {% elif sort_field == 'num_comments' %}
+                    Number of Comments
+                {% else %}
+                    {{ sort_field.replace('_', ' ')|capitalize }}
+                {% endif %}
                 ({{ 'Descending' if sort_order == 'desc' else 'Ascending' }})
             </p>
         </div>
@@ -38,32 +48,45 @@
         {% if error %}
             <p class="error">{{ error }}</p>
         {% elif results %}
-            <p>{{ count }} post(s) found.</p>
+        <p>{{ count }} {{ type_field[:-1] if count == 1 else type_field }} found.</p> 
             {% for doc in results %}
                 {% if doc.type == 'post' and doc.post_id %}
                 <div class="result-item">
                     <h3>
-                        <a href="{{ url_for('post_detail_view', post_id=doc.post_id) }}">
-                            {{ doc.title | default('No Title') }}
+                        <a href="{{ doc.post_url }}" target="_blank" rel="noopener noreferrer">
+                                {{ doc.title | default('No Title') }}
                         </a>
                     </h3>
                     <p><strong>Post ID:</strong> {{ doc.post_id }}</p>
                     <p><strong>Author:</strong> {{ doc.author | default('N/A') }}</p>
-                    <p><strong>Subreddit:</strong> {{ doc.subreddit | default('N/A') }}</p>
+                    {% if doc.subreddit %}<p><strong>Subreddit:</strong> {{ doc.subreddit }}</p>{% endif %}
                     <p><strong>Score:</strong> {{ doc.score if doc.score is not none else 'N/A' }}</p>
                     <p><strong>Comments Count (on post):</strong> {{ doc.num_comments if doc.num_comments is not none else 'N/A' }}</p>
                     <p><strong>Timestamp:</strong> {{ doc.timestamp | default('N/A') }}</p>
                     {% if doc.text %}
                         <p><strong>Text Preview:</strong> {{ doc.text[:200] | e }}... </p>
                     {% endif %}
-                     {% if doc.post_url %}
-                        <p><strong>Origin URL:</strong> <a href="{{ doc.post_url }}" target="_blank" rel="noopener noreferrer">{{ doc.post_url }}</a></p>
+                </div>
+                {% elif doc.type == 'comment' and doc.post_id %}
+                <div class="result-item comment-item">
+                    <div class="comment-meta">
+                        Comment by <strong>{{ doc.author | default('Unknown') }}</strong> 
+                        {% if doc.subreddit %} (Subreddit: {{ doc.subreddit }}){% endif %}
+                        <br>
+                        <em>Timestamp: {{ doc.timestamp | default('N/A') }} | Score: {{ doc.score if doc.score is not none else 'N/A' }}</em>
+                    </div>
+                    {% if doc.text %}
+                        <div class="comment-text-preview">
+                            <p>"{{ doc.text[:300] | e }}..."</p>
+                        </div>
+                    {% else %}
+                        <p><em>(No comment text available)</em></p>
                     {% endif %}
                 </div>
                 {% endif %}
             {% endfor %}
         {% else %}
-            <p>No posts found for your query.</p>
+            <p>No {{ type_field }} found for your query.</p>
         {% endif %}
     </div>
 </body>

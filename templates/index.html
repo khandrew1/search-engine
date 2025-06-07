@@ -1,70 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lucene Search</title>
+    <title>Reddit Search</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
-        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], select { 
-            width: calc(100% - 22px); /* Full width minus padding and border */
-            padding: 10px; 
-            margin-bottom: 10px; /* Spacing for multiple inputs/selects */
-            border: 1px solid #ddd; 
-            border-radius: 4px; 
-            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
         }
-        input[type="submit"] { 
-            padding: 10px 15px; 
-            background-color: #5cb85c; 
-            color: white; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        input[type="submit"]:hover { background-color: #4cae4c; }
-        .search-controls { display: flex; gap: 10px; align-items: flex-end; }
-        .search-controls .query-input { flex-grow: 1; }
-        .search-controls .sort-select select { width: auto; min-width: 150px; }
+
+        h1 {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        select {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"] {
+            padding: 10px 15px;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #4cae4c;
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .search-controls .query-input {
+            flex-grow: 1;
+        }
+
+        .search-controls .sort-select select {
+            width: auto;
+            min-width: 150px;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>Search Your Documents (Posts)</h1>
+        <h1>Search Reddit</h1>
         <form action="{{ url_for('search_results_view') }}" method="post">
             <div class="form-group query-input">
-                <label for="query">Search Term (searches titles by default):</label>
+                <label for="query">Search Term</label>
                 <input type="text" id="query" name="query" placeholder="Enter your search query"
-                       value="{{ request.form.query if request.form else '' }}">
+                    value="{{ request.form.query if request.form else '' }}">
             </div>
 
             <div class="search-controls">
                 <div class="form-group sort-select">
+                    <label for="type_field">Search for:</label>
+                    <select id="type_field" name="type_field">
+                        <option value="posts" {% if sort_field=='posts' %}selected{% endif %}>Posts</option>
+                        <option value="comments" {% if sort_field=='comments' %}selected{% endif %}>Comments</option>
+                    </select>
+                </div>
+                <div class="form-group sort-select">
+                    <label for="reddit_field">Subreddit:</label>
+                    <select id="reddit_field" name="reddit_field">
+                        <option value="all" {% if sort_field=='all' %}selected{% endif %}>All</option>
+                        <option value="ucr" {% if sort_field=='ucr' %}selected{% endif %}>UCR</option>
+                        <option value="technology" {% if sort_field=='technology' %}selected{% endif %}>Technology
+                        </option>
+                        <option value="AskReddit" {% if sort_field=='AskReddit' %}selected{% endif %}>AskReddit</option>
+                        <option value="news" {% if sort_field=='news' %}selected{% endif %}>News</option>
+                    </select>
+                </div>
+                <div class="form-group sort-select">
                     <label for="sort_field">Sort by:</label>
                     <select id="sort_field" name="sort_field">
-                        <option value="relevance" {% if sort_field == 'relevance' %}selected{% endif %}>Relevance</option>
-                        <option value="timestamp" {% if sort_field == 'timestamp' %}selected{% endif %}>Timestamp</option>
-                        <option value="score" {% if sort_field == 'score' %}selected{% endif %}>Post Score</option>
-                        <option value="num_comments" {% if sort_field == 'num_comments' %}selected{% endif %}>Number of Comments</option>
+                        <option value="relevance" {% if sort_field=='relevance' %}selected{% endif %}>Relevance</option>
+                        <option value="timestamp" {% if sort_field=='timestamp' %}selected{% endif %}>Timestamp</option>
+                        <option value="score" {% if sort_field=='score' %}selected{% endif %}>Post Score</option>
+                        <option value="num_comments" {% if sort_field=='num_comments' %}selected{% endif %}>Number of
+                            Comments</option>
                     </select>
                 </div>
 
                 <div class="form-group sort-select">
                     <label for="sort_order">Order:</label>
                     <select id="sort_order" name="sort_order">
-                        <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
-                        <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+                        <option value="desc" {% if sort_order=='desc' %}selected{% endif %}>Descending</option>
+                        <option value="asc" {% if sort_order=='asc' %}selected{% endif %}>Ascending</option>
                     </select>
                 </div>
             </div>
-             <div class="form-group">
+            <div class="form-group">
                 <input type="submit" value="Search">
             </div>
         </form>
     </div>
 </body>
+
 </html>

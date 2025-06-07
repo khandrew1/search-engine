@@ -1,8 +1,7 @@
-import sys
 import os
 import lucene
 
-from flask import Flask, render_template, request, url_for
+from flask import Flask, render_template, request
 
 from java.nio.file import Paths
 from org.apache.lucene.analysis.standard import StandardAnalyzer
@@ -14,11 +13,10 @@ from org.apache.lucene.search import (
     BooleanQuery,
     BooleanClause,
     TermQuery,
-    Sort,  # For sorting
-    SortField,  # For defining sort fields
+    Sort,
+    SortField,
 )
 
-# --- Configuration ---
 INDEX_DIR = "index/IndexFiles.index"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LUCENE_INDEX_PATH = os.path.join(BASE_DIR, INDEX_DIR)
@@ -38,13 +36,10 @@ def initialize_lucene():
             vm_env = lucene.getVMEnv()
             if vm_env:
                 vm_env.attachCurrentThread()
-                # print("Lucene VM already initialized and thread attached.")
             else:
-                # print("Initializing Lucene VM (thread attach path)...")
                 vm_env = lucene.initVM(vmargs=["-Djava.awt.headless=true"])
                 vm_env.attachCurrentThread()
         except lucene.JavaError:
-            # print("Initializing Lucene VM (exception path)...")
             vm_env = lucene.initVM(vmargs=["-Djava.awt.headless=true"])
             vm_env.attachCurrentThread()
         print(f"Lucene version: {lucene.VERSION}")
@@ -104,10 +99,17 @@ def document_to_json_serializable(doc):
 
 @app.route("/")
 def home():
-    # Pass current sort options to maintain state if desired, or defaults
     sort_field = request.args.get("sort_field", "relevance")
     sort_order = request.args.get("sort_order", "desc")
-    return render_template("index.html", sort_field=sort_field, sort_order=sort_order)
+    type_field = request.args.get("type_field", "posts")
+    reddit_field = request.args.get("reddit_field", "ucr")
+    return render_template(
+        "index.html",
+        sort_field=sort_field,
+        sort_order=sort_order,
+        type_field=type_field,
+        reddit_field=reddit_field,
+    )
 
 
 @app.route("/search", methods=["POST"])
@@ -120,9 +122,9 @@ def search_results_view():
 
     query_string = request.form.get("query", "")
     sort_field_form = request.form.get("sort_field", "relevance")
-    sort_order_form = request.form.get(
-        "sort_order", "desc"
-    )  # Default to desc for most fields
+    sort_order_form = request.form.get("sort_order", "desc")
+    type_field_form = request.form.get("type_field", "posts")
+    reddit_field_form = request.form.get("reddit_field", "ucr")
 
     if not query_string:
         return render_template(
@@ -133,6 +135,8 @@ def search_results_view():
             error="Please enter a search query.",
             sort_field=sort_field_form,
             sort_order=sort_order_form,
+            type_field=type_field_form,
+            reddit_field=reddit_field_form,
         )
 
     results = []
@@ -142,47 +146,45 @@ def search_results_view():
 
     try:
         print(
-            f"Searching for posts with: {query_string}, sort: {sort_field_form} {sort_order_form}"
+            f"Searching {reddit_field_form} for {type_field_form} with: {query_string}, sort: {sort_field_form} {sort_order_form}"
         )
 
         escaped_query_string = QueryParser.escape(query_string)
-        main_query = QueryParser("title", analyzer).parse(escaped_query_string)
-        type_filter_query = TermQuery(Term("type", "post"))
+        if type_field_form == "posts":
+            main_query = QueryParser("title", analyzer).parse(escaped_query_string)
+            type_filter_query = TermQuery(Term("type", "post"))
+        else:
+            main_query = QueryParser("text", analyzer).parse(escaped_query_string)
+            type_filter_query = TermQuery(Term("type", "comment"))
 
         boolean_query_builder = BooleanQuery.Builder()
         boolean_query_builder.add(main_query, BooleanClause.Occur.MUST)
         boolean_query_builder.add(type_filter_query, BooleanClause.Occur.MUST)
+        if reddit_field_form != "all":
+            reddit_filter_query = TermQuery(Term("subreddit", reddit_field_form))
+            boolean_query_builder.add(reddit_filter_query, BooleanClause.Occur.MUST)
         final_query = boolean_query_builder.build()
 
-        # --- Sorting Logic ---
         is_reverse = sort_order_form == "desc"
 
         if sort_field_form == "timestamp":
-            # Timestamp is indexed as String, suitable for SortField.Type.STRING
-            # True for reverse (descending - newest first), False for ascending (oldest first)
             sf = SortField("timestamp", SortField.Type.STRING, is_reverse)
             lucene_sort = Sort(sf)
         elif sort_field_form == "score":
-            # Score is NumericDocValuesField (int)
             sf = SortField("score", SortField.Type.INT, is_reverse)
             lucene_sort = Sort(sf)
         elif sort_field_form == "num_comments":
-            # Num_comments is NumericDocValuesField (int)
             sf = SortField("num_comments", SortField.Type.INT, is_reverse)
             lucene_sort = Sort(sf)
         elif sort_field_form == "relevance":
-            # Default Lucene scoring (relevance)
-            # For explicit relevance sort if other tie-breakers were added:
-            # lucene_sort = Sort(SortField.FIELD_SCORE)
-            # Or simply don't pass sort object to searcher.search if it's the only criteria
-            lucene_sort = Sort.RELEVANCE  # Explicitly use relevance sort
-        else:  # Default to relevance if an unknown sort_field is provided
+            lucene_sort = Sort.RELEVANCE
+        else:
             lucene_sort = Sort.RELEVANCE
 
         if lucene_sort:
             print(f"Applying sort: {lucene_sort}")
             score_docs = searcher.search(final_query, 50, lucene_sort).scoreDocs
-        else:  # Should not be hit if Sort.RELEVANCE is default
+        else:
             score_docs = searcher.search(final_query, 50).scoreDocs
 
         count = len(score_docs)
@@ -207,6 +209,7 @@ def search_results_view():
         error=error_message,
         sort_field=sort_field_form,
         sort_order=sort_order_form,
+        type_field=type_field_form,
     )
 
 
@@ -271,5 +274,6 @@ if __name__ == "__main__":
     initialize_lucene()
     if searcher and analyzer:
         app.run(debug=True)
+        del searcher
     else:
         print("Failed to initialize Lucene. Flask app will not start.")
