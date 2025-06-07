@@ -57,7 +57,6 @@
                                 {{ doc.title | default('No Title') }}
                         </a>
                     </h3>
-                    <p><strong>Post ID:</strong> {{ doc.post_id }}</p>
                     <p><strong>Author:</strong> {{ doc.author | default('N/A') }}</p>
                     {% if doc.subreddit %}<p><strong>Subreddit:</strong> {{ doc.subreddit }}</p>{% endif %}
                     <p><strong>Score:</strong> {{ doc.score if doc.score is not none else 'N/A' }}</p>

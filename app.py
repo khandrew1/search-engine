@@ -151,7 +151,7 @@ def search_results_view():
 
         escaped_query_string = QueryParser.escape(query_string)
         if type_field_form == "posts":
-            main_query = QueryParser("title", analyzer).parse(escaped_query_string)
+            main_query = QueryParser("text", analyzer).parse(escaped_query_string)
             type_filter_query = TermQuery(Term("type", "post"))
         else:
             main_query = QueryParser("text", analyzer).parse(escaped_query_string)
@@ -183,9 +183,9 @@ def search_results_view():
 
         if lucene_sort:
             print(f"Applying sort: {lucene_sort}")
-            score_docs = searcher.search(final_query, 50, lucene_sort).scoreDocs
+            score_docs = searcher.search(final_query, 10, lucene_sort).scoreDocs
         else:
-            score_docs = searcher.search(final_query, 50).scoreDocs
+            score_docs = searcher.search(final_query, 10).scoreDocs
 
         count = len(score_docs)
         print(f"{count} total matching posts found.")
